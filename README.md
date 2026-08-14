@@ -1,4 +1,4 @@
-# ClaimVision — Car Damage Analyser
+# Car Damage Analyser
 
 Insurance-claim assistant: **Next.js web app** (`claimvision-web/`) for registration, vehicles, Cloudinary video uploads, and AI-assisted damage analysis; **Python tooling** (`damage-ai-services/`) for CV model training, dataset labeling, and optional email notifications via SMTP and Groq.
 
@@ -17,6 +17,68 @@ For deeper architecture notes aligned with the codebase, see [PROJECT_CONTEXT.tx
 | `PROJECT_CONTEXT.txt` | Maintainer-oriented context (routes, env vars, pipeline behavior)                               |
 
 ---
+
+## System Architecture
+
+```mermaid
+graph TD
+    %% Styling
+    classDef frontend fill:#0055FF,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef backend fill:#2B3137,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef ai fill:#008000,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef database fill:#E34F26,stroke:#fff,stroke-width:2px,color:#fff;
+
+    %% Actors
+    User((User))
+
+    %% Frontend App Router
+    subgraph Frontend [Next.js Client]
+        UI[Dashboard / Web UI]:::frontend
+    end
+
+    %% Backend API Routes
+    subgraph Backend [Next.js API Routes]
+        Auth[Auth Route <br/> /api/auth]:::backend
+        UploadAPI[Upload API <br/> /api/upload]:::backend
+        ClaimAPI[Claims API <br/> /api/claims]:::backend
+        AIService[AI Service Interface <br/> cvService & llmService]:::backend
+    end
+
+    %% AI / ML Processing
+    subgraph ML_Pipeline [Damage AI Pipeline]
+        PyTorch[PyTorch Model <br/> Damage Predictor]:::ai
+        LLM[LLM Service <br/> Claim Analysis]:::ai
+    end
+
+    %% External Infrastructure
+    subgraph External [External Infrastructure]
+        Cloudinary[(Cloudinary <br/> Media Storage)]:::database
+        DB[(Database <br/> Claims, Cars, Users)]:::database
+    end
+
+    %% Execution Flow
+    User -->|Log in / Register| Auth
+    User -->|Upload Car Images/Video| UI
+    
+    UI -->|Send Media via Signed URL| UploadAPI
+    UploadAPI -->|Upload & Store| Cloudinary
+    Cloudinary -.->|Return Secure URL| UploadAPI
+    
+    UI -->|Initiate Claim Request| ClaimAPI
+    ClaimAPI -->|Trigger Analysis| AIService
+    
+    AIService -->|Extract Features/Predict| PyTorch
+    PyTorch -.->|Damage Bounding/Severity| AIService
+    
+    AIService -->|Contextualize Damage| LLM
+    LLM -.->|Generate Claim Report| AIService
+    
+    AIService -->|Save Results| DB
+    ClaimAPI -.->|Return Status| UI
+    
+    %% Webhook flow
+    ClaimAPI -->|Trigger Webhook| Showroom[Showroom Consult Webhook]:::backend
+```
 
 ## Web app (`claimvision-web/`) — ClaimVision
 
